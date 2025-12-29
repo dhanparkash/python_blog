@@ -7,13 +7,13 @@
 </div>
 </div>
 <div class="service-section">
-  <div class="container mt-4 text-black pt-5 pb-0"> 
-     <h2 class="fs-1">This Is Seervice Section</h2>
+  <div class="container mt-4 text-black pt-5 pb-0 text-center"> 
+     <h2 class="fs-1">Our Seervice</h2>
      <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.</p>
 </div>
 <div class="container my-5">
     <div class="row g-4">
-        <!-- Card 1 -->
+        <!-- Card 1 -->     
         <div class="col-md-4">
             <div class="card h-100">
                <img src="{{ url_for('static', filename='images/images.jpg') }}" class="card-img-top" alt="Card 1">
@@ -82,6 +82,67 @@
                 </ul>
                 <a href="/about" class="btn btn-primary mt-3">Learn More</a>
             </div>
+        </div>
+    </div>
+</section>
+<!-- Client Testimonials Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+
+        <!-- Section Header -->
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">What Our Clients Say</h2>
+            <p class="text-muted fs-5">Trusted by clients for quality and reliability</p>
+        </div>
+
+        <!-- Testimonials -->
+        <div class="row g-4">
+
+            <!-- Testimonial 1 -->
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm text-center p-4">
+                    <img src="{{ url_for('static', filename='images/round_profile.webp') }}"
+                         class="rounded-circle mx-auto mb-3"
+                         width="auto" height="80"
+                         alt="Client 1">
+                    <p class="fst-italic">
+                        “Amazing service! The team was professional and delivered exactly what we needed.”
+                    </p>
+                    <h6 class="fw-bold mb-0">John Doe</h6>
+                    <small class="text-muted">CEO, TechCorp</small>
+                </div>
+            </div>
+
+            <!-- Testimonial 2 -->
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm text-center p-4">
+                    <img src="{{ url_for('static', filename='images/round_profile.webp') }}"
+                         class="rounded-circle mx-auto mb-3"
+                         width="auto" height="80"
+                         alt="Client 2">
+                    <p class="fst-italic">
+                        “Highly recommend! Great support and outstanding results.”
+                    </p>
+                    <h6 class="fw-bold mb-0">Sarah Smith</h6>
+                    <small class="text-muted">Marketing Head</small>
+                </div>
+            </div>
+
+            <!-- Testimonial 3 -->
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm text-center p-4">
+                    <img src="{{ url_for('static', filename='images/round_profile.webp') }}"
+                         class="rounded-circle mx-auto mb-3"
+                         width="auto" height="80"
+                         alt="Client 3">
+                    <p class="fst-italic">
+                        “Professional, reliable, and creative. A pleasure to work with.”
+                    </p>
+                    <h6 class="fw-bold mb-0">Michael Lee</h6>
+                    <small class="text-muted">Founder, StartUpX</small>
+                </div>
+            </div>
+
         </div>
     </div>
 </section>

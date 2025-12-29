@@ -5,3 +5,8 @@
     background: olive;
     border: 0;
 }
+img.card-img-top {
+    aspect-ratio: 2/1;
+    height: 250px;
+    object-fit: cover;
+}

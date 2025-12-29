@@ -1,0 +1,7 @@
+.min-height-500 {
+    min-height: 500px; /* fixed minimum height */
+}
+.btn.btn-primary {
+    background: olive;
+    border: 0;
+}

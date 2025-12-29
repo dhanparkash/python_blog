@@ -1,7 +1,89 @@
-
 {% extends "base.html" %}
-
 {% block content %}
-<h1>Welcome to My Website</h1>
-<p>This is a simple Flask Home page.</p>
+<div class="banner-section min-height-500 d-flex justify-content-center align-items-center" style="background-image: url({{ url_for('static', filename='images/home-banner.jpg') }});">
+  <div class="container mt-4 text-white pt-5 pb-5 pt-5vh"> 
+     <h1 class="fs-1">Welcome to My Website</h1>
+     <p>This is a simple Flask Home page.</p>
+</div>
+</div>
+<div class="service-section">
+  <div class="container mt-4 text-black pt-5 pb-0"> 
+     <h2 class="fs-1">This Is Seervice Section</h2>
+     <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.</p>
+</div>
+<div class="container my-5">
+    <div class="row g-4">
+        <!-- Card 1 -->
+        <div class="col-md-4">
+            <div class="card h-100">
+               <img src="{{ url_for('static', filename='images/images.jpg') }}" class="card-img-top" alt="Card 1">
+
+                <div class="card-body">
+                    <h5 class="card-title">Card Title 1</h5>
+                    <p class="card-text">Some quick example text to build the card content.</p>
+                    <a href="#" class="btn btn-primary">Go somewhere</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <img src="{{ url_for('static', filename='images/finance.webp') }}" class="card-img-top" alt="Card 2">
+                <div class="card-body">
+                    <h5 class="card-title">Card Title 2</h5>
+                    <p class="card-text">Some quick example text to build the card content.</p>
+                    <a href="#" class="btn btn-primary">Go somewhere</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <img src="{{ url_for('static', filename='images/mobile.png') }}" class="card-img-top" alt="Card 3">
+                <div class="card-body">
+                    <h5 class="card-title">Card Title 3</h5>
+                    <p class="card-text">Some quick example text to build the card content.</p>
+                    <a href="#" class="btn btn-primary">Go somewhere</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+<!-- Who We Are Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <!-- Section Header -->
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Who We Are</h2>
+            <p class="text-muted fs-5">We are a team of dedicated professionals committed to delivering high-quality services and innovative solutions.</p>
+        </div>
+
+        <!-- Content Row -->
+        <div class="row align-items-center">
+            <!-- Image Column -->
+            <div class="col-md-6 mb-4 mb-md-0">
+                <img src="{{ url_for('static', filename='images/whoarewe.png') }}" class="img-fluid rounded shadow" alt="Who We Are">
+            </div>
+
+            <!-- Text Column -->
+            <div class="col-md-6">
+                <h3 class="mb-3">Our Mission</h3>
+                <p>Our mission is to provide top-notch services while maintaining integrity, professionalism, and a commitment to innovation. We believe in building lasting relationships with our clients and empowering them to succeed.</p>
+
+                <h3 class="mt-4 mb-3">Our Values</h3>
+                <ul class="list-unstyled">
+                    <li class="mb-2">✔ Excellence in every project</li>
+                    <li class="mb-2">✔ Transparency and honesty</li>
+                    <li class="mb-2">✔ Innovation and creativity</li>
+                    <li class="mb-2">✔ Customer-centric approach</li>
+                </ul>
+                <a href="/about" class="btn btn-primary mt-3">Learn More</a>
+            </div>
+        </div>
+    </div>
+</section>
+
 {% endblock %}

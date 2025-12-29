@@ -1,6 +1,7 @@
 from flask import Flask, render_template, abort
 from datetime import datetime
-app = Flask(__name__)
+
+
 
 # Fake blog data
 posts = [
@@ -15,6 +16,7 @@ posts = [
         "content": "Flask is simple and powerful for small projects."
     }
 ]
+
 @app.route("/")
 def home():
     return render_template("home.html")

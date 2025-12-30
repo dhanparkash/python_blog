@@ -9,7 +9,7 @@
 </div>
 <div class="container pt-5 pb-5 ">
 <div class="card-outer d-grid gap-3" style="grid-template-columns: repeat(3, 1fr);"">
-    {% for post in posts %}
+    {% for post in var_post %}
         <div class="card h-100 p-3">
             <img src="{{ url_for('static', filename=post.post_thumb) }}"
                  class="card-img-top"

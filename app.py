@@ -37,18 +37,26 @@ posts = [
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return render_template("home.html", title="Home")
 
 @app.route("/blog")
 def blog():
-    return render_template("blog.html", posts=posts)
+    return render_template("blog.html", var_post=posts, title="Blog")
 
 @app.route("/blog/<slug>")
 def post(slug):
     post = next((p for p in posts if p["slug"] == slug), None)
     if not post:
         abort(404)
-    return render_template("post.html", post=post)
+    return render_template("post.html", post=post,  title=post["title"])
+
+@app.route("/about")
+def about():
+     return render_template("about.html", title="About")
+
+@app.route("/contact")
+def contact():
+     return render_template("contact.html", title="Contact")
 
 if __name__ == "__main__":
     app.run(debug=True)

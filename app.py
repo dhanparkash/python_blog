@@ -8,8 +8,8 @@ app.secret_key = "supersecretkey"  # required for flash messages
 # =====================
 # EMAIL CONFIG
 # =====================
-EMAIL = "yash.dhiman@girlpowertalk.com"
-PASSWORD = "pqgd rmbr bjjd fkqt"  # Gmail App Password
+EMAIL = "dhanparkashdhiman7@gmail.com"
+PASSWORD = "tynx ilex vlso brxf"  # Gmail App Password
 
 def send_contact_email(name, email, message):
     msg = EmailMessage()

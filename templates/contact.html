@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="banner-section min-height-500 d-flex justify-content-center align-items-center" style="background-image: url({{ url_for('static', filename='images/home-banner.jpg') }});">
+
+<div class="banner-section min-height-500 d-flex justify-content-center align-items-center bg-black">
   <div class="container mt-4 text-white pt-5 pb-5 pt-5vh"> 
      <h1 class="fs-1">Contact Us</h1>
      <p>Get in touch with us!</p>
@@ -32,17 +33,17 @@
                     <form method="post" action="/contact">
                         <div class="mb-3">
                             <label class="form-label">Name</label>
-                            <input type="text" class="form-control" placeholder="Your name" required>
+                            <input type="text" class="form-control" placeholder="Your name" name="name" required>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control" placeholder="Your email" required>
+                            <input type="email" class="form-control" name="email" placeholder="Your email" required>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Message</label>
-                            <textarea class="form-control" rows="4" placeholder="Your message" required></textarea>
+                            <textarea class="form-control" rows="4" placeholder="Your message" name="message" required></textarea>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100">
@@ -50,6 +51,16 @@
                         </button>
                     </form>
                 </div>
+   <!-- FLASH MESSAGE BELOW FORM -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} mt-3">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}             
             </div>
 
         </div>

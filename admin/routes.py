@@ -41,6 +41,18 @@ def create_admin():
         conn.commit()
     conn.close()
 
+def create_admin():
+    conn = get_db()
+    admin = conn.execute("SELECT * FROM users WHERE role='admin'").fetchone()
+    if not admin:
+        conn.execute(
+            "INSERT INTO users (name,email,password,role) VALUES (?,?,?,?)",
+            ("Admin","yash@gmail.com",generate_password_hash("admin123"),"admin")
+        )
+        conn.commit()
+    conn.close()
+
+
 def is_admin():
     if "user_id" not in session:
         return False

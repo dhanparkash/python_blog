@@ -2,8 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
-
+app.secret_key = os.environ.get("SECRET_KEY", "fallbacksecret")
 DB_NAME = os.path.join(os.getcwd(), "users.db")
 
 # ------------------ DATABASE ------------------

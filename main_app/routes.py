@@ -1,9 +1,9 @@
-from flask import Flask, render_template, abort, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, flash, redirect, url_for, abort
 from email.message import EmailMessage
 import smtplib
 
-app = Flask(__name__)
-app.secret_key = "supersecretkey"  # required for flash messages
+# THIS NAME MUST MATCH what you import in app.py
+main_bp = Blueprint("main", __name__, template_folder="templates")
 
 # =====================
 # EMAIL CONFIG

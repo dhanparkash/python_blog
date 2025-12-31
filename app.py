@@ -1,8 +1,9 @@
-from flask import Flask
 import os
 import sqlite3
 from admin.routes import admin_bp, create_admin
 from main_app.routes import main_bp
+
+from flask import Flask
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"

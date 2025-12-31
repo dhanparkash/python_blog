@@ -225,4 +225,4 @@ def change_password():
 # ------------------ INIT ------------------
 if __name__ == "__main__":
     create_table()
-    app.run(debug=True)
+    app.run(debug=False)

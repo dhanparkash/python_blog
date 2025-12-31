@@ -2,8 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "fallbacksecret")
-DB_NAME = os.path.join(os.getcwd(), "users.db")
+app.secret_key = "supersecretkey"
+
+DB_NAME = "users.db"
 
 # ------------------ DATABASE ------------------
 def get_db():
@@ -224,6 +225,4 @@ def change_password():
 # ------------------ INIT ------------------
 if __name__ == "__main__":
     create_table()
-    import os
-    port = int(os.environ.get("PORT", 10000))  # Render sets PORT dynamically
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True)

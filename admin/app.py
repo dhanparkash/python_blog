@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-DB_NAME = "users.db"
+DB_NAME = os.path.join(os.getcwd(), "users.db")
 
 # ------------------ DATABASE ------------------
 def get_db():

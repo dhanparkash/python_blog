@@ -7,14 +7,29 @@ import os
 admin_bp = Blueprint("admin", __name__, template_folder="templates")
 
 # DB path
-DB_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.db")
+DB_NAME = os.path.join(os.getcwd(), "users.db")
+
+# ------------------ DATABASE ------------------
 
 def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
 
-# Ensure admin exists
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
 def create_admin():
     conn = get_db()
     admin = conn.execute("SELECT * FROM users WHERE role='admin'").fetchone()
@@ -55,7 +70,6 @@ def login():
             flash("Invalid email or password", "danger")
     return render_template("login.html")
 
-
 @admin_bp.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
@@ -65,13 +79,11 @@ def dashboard():
                            email=session["user_email"], 
                            role=session["user_role"])
 
-
 @admin_bp.route("/logout")
 def logout():
     session.clear()
     flash("Logged out successfully", "info")
     return redirect(url_for("admin.login"))
-
 
 @admin_bp.route("/users")
 def users():
@@ -82,7 +94,6 @@ def users():
     users = conn.execute("SELECT * FROM users").fetchall()
     conn.close()
     return render_template("users.html", users=users)
-
 
 @admin_bp.route("/edit-user/<int:id>", methods=["GET", "POST"])
 def edit_user(id):
@@ -105,7 +116,6 @@ def edit_user(id):
     conn.close()
     return render_template("edit_user.html", user=user)
 
-
 @admin_bp.route("/delete-user/<int:id>")
 def delete_user(id):
     if not is_admin():
@@ -120,7 +130,6 @@ def delete_user(id):
     conn.close()
     flash("User deleted successfully", "info")
     return redirect(url_for("admin.users"))
-
 
 @admin_bp.route("/change-password", methods=["GET", "POST"])
 def change_password():

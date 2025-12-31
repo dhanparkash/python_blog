@@ -2,9 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
-
-DB_NAME = "users.db"
+import os
+DB_NAME = os.path.join(os.getcwd(), "users.db")
 
 # ------------------ DATABASE ------------------
 def get_db():
@@ -32,6 +31,17 @@ conn = sqlite3.connect("users.db")
 print(conn.execute("PRAGMA table_info(users)").fetchall())
 print(conn.execute("SELECT email, role FROM users").fetchall())
 conn.close()
+
+def create_admin():
+    conn = get_db()
+    admin = conn.execute("SELECT * FROM users WHERE role='admin'").fetchone()
+    if not admin:
+        conn.execute(
+            "INSERT INTO users (name,email,password,role) VALUES (?,?,?,?)",
+            ("Admin","yash@gmail.com",generate_password_hash("admin123"),"admin")
+        )
+        conn.commit()
+    conn.close()
 
 
 def is_admin():

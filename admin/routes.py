@@ -1,35 +1,19 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-import sqlite3
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
+import sqlite3
 import os
 
-# ------------------ APP & DB ------------------
-template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
-app = Flask(__name__, template_folder=template_dir)
-app.secret_key = "supersecretkey"
+# Blueprint
+admin_bp = Blueprint("admin", __name__, template_folder="templates")
 
+# DB path inside admin/
 DB_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.db")
 
-# ------------------ DATABASE ------------------
 def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
 
-def create_table():
-    conn = get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT DEFAULT 'user'
-        )
-    """)
-    conn.commit()
-    conn.close()
-
 def create_admin():
     conn = get_db()
     admin = conn.execute("SELECT * FROM users WHERE role='admin'").fetchone()
@@ -40,18 +24,6 @@ def create_admin():
         )
         conn.commit()
     conn.close()
-
-def create_admin():
-    conn = get_db()
-    admin = conn.execute("SELECT * FROM users WHERE role='admin'").fetchone()
-    if not admin:
-        conn.execute(
-            "INSERT INTO users (name,email,password,role) VALUES (?,?,?,?)",
-            ("Admin","yash@gmail.com",generate_password_hash("admin123"),"admin")
-        )
-        conn.commit()
-    conn.close()
-
 
 def is_admin():
     if "user_id" not in session:
@@ -62,127 +34,103 @@ def is_admin():
     return user and user["role"] == "admin"
 
 # ------------------ ROUTES ------------------
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-        password = request.form["password"]
-        hashed_password = generate_password_hash(password)
-        try:
-            conn = get_db()
-            conn.execute("INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-                         (name, email, hashed_password))
-            conn.commit()
-            conn.close()
-            flash("Registration successful. Please login.", "success")
-            return redirect(url_for("login"))
-        except sqlite3.IntegrityError:
-            flash("Email already exists", "danger")
-    return render_template("register.html")
-
-@app.route("/login", methods=["GET", "POST"])
+@admin_bp.route("/login", methods=["GET","POST"])
 def login():
-    if request.method == "POST":
+    if request.method=="POST":
         email = request.form["email"]
         password = request.form["password"]
         conn = get_db()
-        user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         conn.close()
-        if user and check_password_hash(user["password"], password):
+        if user and check_password_hash(user["password"], password) and user["role"]=="admin":
             session["user_id"] = user["id"]
             session["user_name"] = user["name"]
             session["user_email"] = user["email"]
             session["user_role"] = user["role"]
-            flash("Login successful!", "success")
-            return redirect(url_for("dashboard"))
-        else:
-            flash("Invalid email or password", "danger")
+            flash("Admin login successful!", "success")
+            return redirect(url_for("admin.dashboard"))
+        flash("Invalid email or password", "danger")
     return render_template("login.html")
 
-@app.route("/dashboard")
+@admin_bp.route("/dashboard")
 def dashboard():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-    return render_template("dashboard.html", 
-                           name=session["user_name"], 
-                           email=session["user_email"], 
+    if not is_admin():
+        flash("Access denied", "danger")
+        return redirect(url_for("admin.login"))
+    return render_template("dashboard.html",
+                           name=session["user_name"],
+                           email=session["user_email"],
                            role=session["user_role"])
 
-@app.route("/logout")
-def logout():
-    session.clear()
-    flash("Logged out successfully", "info")
-    return redirect(url_for("login"))
-
-@app.route("/users")
+@admin_bp.route("/users")
 def users():
     if not is_admin():
         flash("Access denied", "danger")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("admin.login"))
     conn = get_db()
     users = conn.execute("SELECT * FROM users").fetchall()
     conn.close()
     return render_template("users.html", users=users)
 
-@app.route("/edit-user/<int:id>", methods=["GET", "POST"])
+@admin_bp.route("/edit-user/<int:id>", methods=["GET","POST"])
 def edit_user(id):
-    if "user_id" not in session:
-        return redirect(url_for("login"))
+    if not is_admin():
+        flash("Access denied", "danger")
+        return redirect(url_for("admin.login"))
     conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (id,)).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE id=?", (id,)).fetchone()
     if not user:
         conn.close()
         flash("User not found", "danger")
-        return redirect(url_for("users"))
-    if request.method == "POST":
+        return redirect(url_for("admin.users"))
+    if request.method=="POST":
         name = request.form["name"]
         email = request.form["email"]
-        conn.execute("UPDATE users SET name = ?, email = ? WHERE id = ?", (name, email, id))
+        conn.execute("UPDATE users SET name=?, email=? WHERE id=?", (name,email,id))
         conn.commit()
         conn.close()
-        flash("User updated successfully", "success")
-        return redirect(url_for("users"))
+        flash("User updated successfully","success")
+        return redirect(url_for("admin.users"))
     conn.close()
     return render_template("edit_user.html", user=user)
 
-@app.route("/delete-user/<int:id>")
+@admin_bp.route("/delete-user/<int:id>")
 def delete_user(id):
     if not is_admin():
         flash("Access denied", "danger")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("admin.login"))
     if id == session["user_id"]:
         flash("You cannot delete your own account", "warning")
-        return redirect(url_for("users"))
+        return redirect(url_for("admin.users"))
     conn = get_db()
-    conn.execute("DELETE FROM users WHERE id = ?", (id,))
+    conn.execute("DELETE FROM users WHERE id=?", (id,))
     conn.commit()
     conn.close()
-    flash("User deleted successfully", "info")
-    return redirect(url_for("users"))
+    flash("User deleted successfully","info")
+    return redirect(url_for("admin.users"))
 
-@app.route("/change-password", methods=["GET", "POST"])
+@admin_bp.route("/change-password", methods=["GET","POST"])
 def change_password():
     if "user_id" not in session:
-        return redirect(url_for("login"))
-    if request.method == "POST":
+        return redirect(url_for("admin.login"))
+    if request.method=="POST":
         current = request.form["current"]
         new = request.form["new"]
         conn = get_db()
-        user = conn.execute("SELECT password FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+        user = conn.execute("SELECT password FROM users WHERE id=?", (session["user_id"],)).fetchone()
         if not check_password_hash(user["password"], current):
-            flash("Current password incorrect", "danger")
-            return redirect(url_for("change_password"))
+            flash("Current password incorrect","danger")
+            return redirect(url_for("admin.change_password"))
         hashed = generate_password_hash(new)
-        conn.execute("UPDATE users SET password = ? WHERE id = ?", (hashed, session["user_id"]))
+        conn.execute("UPDATE users SET password=? WHERE id=?", (hashed, session["user_id"]))
         conn.commit()
         conn.close()
-        flash("Password updated successfully", "success")
-        return redirect(url_for("dashboard"))
+        flash("Password updated successfully","success")
+        return redirect(url_for("admin.dashboard"))
     return render_template("change_password.html")
 
-# ------------------ INIT ------------------
-if __name__ == "__main__":
-    create_table()
-    create_admin()
-    app.run(debug=True)
+@admin_bp.route("/logout")
+def logout():
+    session.clear()
+    flash("Logged out successfully","info")
+    return redirect(url_for("admin.login"))

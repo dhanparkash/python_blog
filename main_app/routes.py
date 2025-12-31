@@ -1,9 +1,9 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, abort
+from flask import Flask, render_template, request, flash, redirect, url_for, abort
 from email.message import EmailMessage
 import smtplib
 
-# THIS NAME MUST MATCH what you import in app.py
-main_bp = Blueprint("main", __name__, template_folder="templates")
+app = Flask(__name__)  # now @app.route works
+app.secret_key = "supersecretkey"
 
 # =====================
 # EMAIL CONFIG

@@ -4,7 +4,6 @@ import smtplib
 
 main_bp = Blueprint("main", __name__, template_folder="templates")
 
-# ===================== EMAIL =====================
 EMAIL = "dhanparkashdhiman7@gmail.com"
 PASSWORD = "tynx ilex vlso brxf"  # Gmail App Password
 
@@ -12,14 +11,13 @@ def send_contact_email(name, email, message):
     msg = EmailMessage()
     msg["Subject"] = "New Contact Form Message"
     msg["From"] = EMAIL
-    msg["To"] = EMAIL  # send to yourself
+    msg["To"] = EMAIL
     msg.set_content(f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}")
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(EMAIL, PASSWORD)
         server.send_message(msg)
 
-
-# ===================== BLOG DATA =====================
+# Blog posts
 posts = [
     {"id":1,"slug":"my-first-blog","title":"My First Blog Post","post_thumb":"images/finance.webp","content":"Lorem Ipsum is simply dummy text."},
     {"id":2,"slug":"my-second-blog","title":"My Second Blog Post","post_thumb":"images/contact-us.jpg","content":"This is my second blog post using Flask."},
@@ -27,7 +25,6 @@ posts = [
     {"id":4,"slug":"my-forth-blog","title":"Learning Flask","post_thumb":"images/mobile.png","content":"Flask is simple and powerful."}
 ]
 
-# ===================== ROUTES =====================
 @main_bp.route("/")
 def home():
     return render_template("home.html", title="Home")

@@ -3,8 +3,13 @@ import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
-# Blueprint
-admin_bp = Blueprint("admin", __name__, template_folder="templates")
+admin_bp = Blueprint(
+    "admin",
+    __name__,
+    url_prefix="/admin",
+    template_folder="templates"  # relative to admin_app/
+)
+
 
 # DB path
 DB_NAME = os.path.join(os.getcwd(), "users.db")
@@ -214,19 +219,310 @@ def add_user():
     return render_template("add_user.html")
 
 
-@admin_bp.route("/page")
-def page():
-    return render_template("pages.html")
+# ---------- PAGES ----------
+
+@admin_bp.route("/pages")
+def pages():
+    conn = get_db()
+    pages = conn.execute("SELECT * FROM pages ORDER BY id DESC").fetchall()
+    conn.close()
+    return render_template("pages.html", pages=pages)
+
 
 @admin_bp.route("/add-page", methods=["GET", "POST"])
 def add_page():
-    if not is_admin():
-        return redirect(url_for("admin.dashboard"))
-
     if request.method == "POST":
         title = request.form["title"]
+        slug = request.form["slug"]
         content = request.form["content"]
-        flash("Page created (demo)", "success")
+
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO pages (title, slug, content) VALUES (?,?,?)",
+            (title, slug, content)
+        )
+        conn.commit()
+        conn.close()
+        flash("Page added successfully", "success")
         return redirect(url_for("admin.pages"))
 
     return render_template("add_page.html")
+
+
+@admin_bp.route("/edit-page/<int:id>", methods=["GET", "POST"])
+def edit_page(id):
+    conn = get_db()
+    page = conn.execute("SELECT * FROM pages WHERE id=?", (id,)).fetchone()
+
+    if request.method == "POST":
+        title = request.form["title"]
+        slug = request.form["slug"]
+        content = request.form["content"]
+
+        conn.execute(
+            "UPDATE pages SET title=?, slug=?, content=? WHERE id=?",
+            (title, slug, content, id)
+        )
+        conn.commit()
+        conn.close()
+        flash("Page updated", "success")
+        return redirect(url_for("admin.pages"))
+
+    conn.close()
+    return render_template("edit_page.html", page=page)
+
+
+@admin_bp.route("/delete-page/<int:id>")
+def delete_page(id):
+    conn = get_db()
+    conn.execute("DELETE FROM pages WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    flash("Page deleted", "info")
+    return redirect(url_for("admin.pages"))
+
+
+
+
+# ---------- BLOG POSTS ----------
+
+@admin_bp.route("/posts")
+def admin_posts():
+    conn = get_db()
+    posts = conn.execute("SELECT * FROM posts ORDER BY id DESC").fetchall()
+    conn.close()
+    return render_template("posts.html", posts=posts)
+
+
+@admin_bp.route("/add-post", methods=["GET", "POST"])
+def add_post():
+    # Only admins can add posts
+    if not is_admin():
+        flash("Access denied", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    if request.method == "POST":
+        title = request.form["title"].strip()
+        slug = request.form["slug"].strip()
+        content = request.form["content"].strip()
+
+        if not title or not slug or not content:
+            flash("All fields are required", "danger")
+            return render_template("add_post.html")
+
+        conn = get_db()
+        try:
+            conn.execute(
+                "INSERT INTO posts (title, slug, content) VALUES (?, ?, ?)",
+                (title, slug, content)
+            )
+            conn.commit()
+            flash("Post added successfully!", "success")
+            return redirect(url_for("admin.admin_posts"))
+        except sqlite3.IntegrityError:
+            flash("Slug already exists. Use a unique slug.", "danger")
+        finally:
+            conn.close()
+
+    return render_template("add_post.html")
+
+
+@admin_bp.route("/edit-post/<int:id>", methods=["GET", "POST"])
+def edit_post(id):
+    conn = get_db()
+    post = conn.execute("SELECT * FROM posts WHERE id=?", (id,)).fetchone()
+
+    if request.method == "POST":
+        title = request.form["title"]
+        slug = request.form["slug"]
+        content = request.form["content"]
+
+        conn.execute(
+            "UPDATE posts SET title=?, slug=?, content=? WHERE id=?",
+            (title, slug, content, id)
+        )
+        conn.commit()
+        conn.close()
+        flash("Post updated", "success")
+        return redirect(url_for("admin.admin_posts"))
+
+    conn.close()
+    return render_template("edit_post.html", post=post)
+
+
+@admin_bp.route("/delete-post/<int:id>")
+def delete_post(id):
+    conn = get_db()
+    conn.execute("DELETE FROM posts WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    flash("Post deleted", "info")
+    return redirect(url_for("admin.admin_posts"))
+
+
+# BLOG LIST
+@admin_bp.route("/blog")
+def blog():
+    conn = get_db()
+    posts = conn.execute("SELECT * FROM posts ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return render_template("blog.html", posts=posts)
+
+
+# BLOG DETAIL
+@admin_bp.route("/blog/<slug>")
+def blog_detail(slug):
+    conn = get_db()
+    post = conn.execute("SELECT * FROM posts WHERE slug=?", (slug,)).fetchone()
+    conn.close()
+
+    if not post:
+        abort(404)
+
+    return render_template("blog_detail.html", post=post)
+
+
+# ---------- PAGES ----------
+
+# List all pages
+@admin_bp.route("/pages")
+def pages_view():
+    if not is_admin():
+        flash("Access denied", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    conn = get_db()
+    pages = conn.execute("SELECT * FROM pages ORDER BY id DESC").fetchall()
+    conn.close()
+    return render_template("pages.html", pages=pages)
+
+
+# Add new page
+@admin_bp.route("/add-page", methods=["GET", "POST"])
+def add_page_view():
+    if not is_admin():
+        flash("Access denied", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    if request.method == "POST":
+        title = request.form["title"].strip()
+        slug = request.form["slug"].strip()
+        content = request.form["content"].strip()
+
+        if not title or not slug or not content:
+            flash("All fields are required", "danger")
+            return render_template("add_page.html")
+
+        conn = get_db()
+        try:
+            conn.execute(
+                "INSERT INTO pages (title, slug, content) VALUES (?, ?, ?)",
+                (title, slug, content)
+            )
+            conn.commit()
+            flash("Page added successfully!", "success")
+            return redirect(url_for("admin.pages_view"))
+        except sqlite3.IntegrityError:
+            flash("Slug already exists. Use a unique slug.", "danger")
+        finally:
+            conn.close()
+
+    return render_template("add_page.html")
+
+
+# Edit page
+@admin_bp.route("/edit-page/<int:id>", methods=["GET", "POST"])
+def edit_page_view(id):
+    if not is_admin():
+        flash("Access denied", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    conn = get_db()
+    page = conn.execute("SELECT * FROM pages WHERE id=?", (id,)).fetchone()
+
+    if not page:
+        conn.close()
+        flash("Page not found", "danger")
+        return redirect(url_for("admin.pages_view"))
+
+    if request.method == "POST":
+        title = request.form["title"].strip()
+        slug = request.form["slug"].strip()
+        content = request.form["content"].strip()
+
+        if not title or not slug or not content:
+            flash("All fields are required", "danger")
+            return render_template("edit_page.html", page=page)
+
+        try:
+            conn.execute(
+                "UPDATE pages SET title=?, slug=?, content=? WHERE id=?",
+                (title, slug, content, id)
+            )
+            conn.commit()
+            flash("Page updated successfully!", "success")
+            return redirect(url_for("admin.pages_view"))
+        except sqlite3.IntegrityError:
+            flash("Slug already exists. Use a unique slug.", "danger")
+            return render_template("edit_page.html", page=page)
+        finally:
+            conn.close()
+
+    conn.close()
+    return render_template("edit_page.html", page=page)
+
+
+# Delete page
+@admin_bp.route("/delete-page/<int:id>")
+def delete_page_view(id):
+    if not is_admin():
+        flash("Access denied", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    conn = get_db()
+    conn.execute("DELETE FROM pages WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+
+    flash("Page deleted successfully!", "info")
+    return redirect(url_for("admin.pages_view"))
+
+
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+
+    # USERS
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL
+        )
+    """)
+
+    # PAGES
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # BLOG POSTS
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()

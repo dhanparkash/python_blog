@@ -2,32 +2,42 @@
 
 {% block content %}
 <h2>All Pages</h2>
+<a href="{{ url_for('admin.add_page_view') }}">Add New Page</a>
 
-<table border="1" cellpadding="10">
+<table border="1" cellpadding="5">
     <tr>
-        <th>Page Name</th>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Slug</th>
         <th>Actions</th>
     </tr>
 
-    <tr>
-        <td>Home</td>
-        <td>Edit | Delete</td>
-    </tr>
-
-    <tr>
-        <td>Blog</td>
-        <td>Edit | Delete</td>
-    </tr>
-
-    <tr>
-        <td>About Us</td>
-        <td>Edit | Delete</td>
-    </tr>
-
-    <tr>
-        <td>Contact Us</td>
-        <td>Edit | Delete</td>
-    </tr>
+    {% if pages %}
+        {% for page in pages %}
+        <tr>
+            <td style="width:100px">{{ page['id'] }}</td>
+            <td style="width:100px">{{ page['title'] }}</td>
+            <td style="width:100px">{{ page['slug'] }}</td>
+           <td style="width:100px">
+                <a href="{{ url_for('admin.edit_page_view', id=page['id']) }}">Edit</a> |
+                <a href="{{ url_for('admin.delete_page_view', id=page['id']) }}">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr>
+            <td colspan="4">No pages found.</td>
+        </tr>
+    {% endif %}
 </table>
+
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
 {% endblock %}

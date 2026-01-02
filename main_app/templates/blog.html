@@ -8,17 +8,13 @@
     </div>
 </div>
 <div class="container pt-5 pb-5 ">
-<div class="card-outer d-grid gap-3" style="grid-template-columns: repeat(3, 1fr);"">
-    {% for post in var_post %}
-        <div class="card h-100 p-3">
-            <img src="{{ url_for('static', filename=post.post_thumb) }}"
-                 class="card-img-top"
-                 alt="{{ post.title }}">
-            <h3 class="fs-3">{{ post.title }}</h3>
-            <p>{{ post.content }}</p>
-            <a href="/blog/{{post.slug}}" class="btn btn-primary w-50 mt-3">Read More</a>
-        </div>
-    {% endfor %}
+<h1>Blog</h1>
+{% for post in posts %}
+    <h2><a href="/blog/{{ post['slug'] }}">{{ post['title'] }}</a></h2>
+    <p>{{ post['content'][:150] }}...</p>
+{% else %}
+    <p>No posts yet.</p>
+{% endfor %}
 </div>
 </div>
 {% endblock %}

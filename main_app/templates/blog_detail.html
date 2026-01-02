@@ -1,9 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container pt-5 pb-5">
-  <img src="{{ url_for('static', filename=post.post_thumb) }}"  class="card-img-top" alt="{{ post.title }}">   
-<h1>{{ post['title'] }}</h1>
-<p>{{ post['content'] }}</p>
+{% if post.thumbnail %}
+    <img src="{{ url_for('static', filename='uploads/' ~ post.thumbnail) }}" alt="{{ post.title }}" style="max-width:300px;">
+{% endif %}  
+<h1>{{ post.title }}</h1>
+
+<!-- Render the content as HTML -->
+<div>
+    {{ post.content|safe }}
+</div>
+
+
 <a href="/blog">Back to blog</a>
 </div>
 <div class="container pt-5 pb-5">

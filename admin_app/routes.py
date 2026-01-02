@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, request, redirect, url_for, flash, render_template, current_app, session
+from werkzeug.utils import secure_filename
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 admin_bp = Blueprint(
     "admin",
@@ -9,10 +11,15 @@ admin_bp = Blueprint(
     url_prefix="/admin",
     template_folder="templates"  # relative to admin_app/
 )
-
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # DB path
 DB_NAME = os.path.join(os.getcwd(), "users.db")
+
+
+UPLOAD_FOLDER = "/static/images"
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 # ------------------ DATABASE ------------------
 
@@ -293,39 +300,31 @@ def admin_posts():
     conn.close()
     return render_template("posts.html", posts=posts)
 
+@admin_bp.route('/static/images', methods=['POST'])
+def upload_file():
+    file = request.files['file']
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    file.save(os.path.join(upload_folder, file.filename))
+    return "File uploaded!"
 
 @admin_bp.route("/add-post", methods=["GET", "POST"])
 def add_post():
-    # Only admins can add posts
-    if not is_admin():
-        flash("Access denied", "danger")
-        return redirect(url_for("admin.dashboard"))
-
     if request.method == "POST":
-        title = request.form["title"].strip()
-        slug = request.form["slug"].strip()
-        content = request.form["content"].strip()
+        title = request.form['title']
+        slug = request.form['slug']
+        content = request.form['content']
 
-        if not title or not slug or not content:
-            flash("All fields are required", "danger")
-            return render_template("add_post.html")
+        thumbnail_file = request.files.get('thumbnail')
+        thumbnail_filename = None
+        if thumbnail_file and allowed_file(thumbnail_file.filename):
+            filename = secure_filename(thumbnail_file.filename)
+            thumbnail_file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
+            thumbnail_filename = filename
 
-        conn = get_db()
-        try:
-            conn.execute(
-                "INSERT INTO posts (title, slug, content) VALUES (?, ?, ?)",
-                (title, slug, content)
-            )
-            conn.commit()
-            flash("Post added successfully!", "success")
-            return redirect(url_for("admin.admin_posts"))
-        except sqlite3.IntegrityError:
-            flash("Slug already exists. Use a unique slug.", "danger")
-        finally:
-            conn.close()
+        flash("Post added successfully!", "success")
+        return redirect(url_for('admin.add_post'))
 
     return render_template("add_post.html")
-
 
 @admin_bp.route("/edit-post/<int:id>", methods=["GET", "POST"])
 def edit_post(id):

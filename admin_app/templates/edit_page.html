@@ -20,31 +20,50 @@
     <input type="text" name="slug" id="slug" value="{{ page.slug }}" required><br><br>
 
     <label for="content">Content:</label><br>
-    <textarea name="content" id="content" rows="10" required>{{ page.content }}</textarea><br><br>
 
+    <!-- Quill Editor Container -->
+    <div id="editor" style="height: 300px; background-color: #fff;">{{ page.content|safe }}</div>
+
+    <!-- Hidden input to store editor content -->
+    <input type="hidden" name="content" id="content">
+
+    <br><br>
     <button type="submit">Update Page</button>
 </form>
 
 <a href="{{ url_for('admin.pages_view') }}">Back to Pages</a>
 
-<!-- TinyMCE CDN -->
-<script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-
-
+<!-- Quill JS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <script>
-  tinymce.init({
-    selector: '#content',   // Apply to the textarea with id="content"
-    height: 400,
-    menubar: true,
-    plugins: [
-      'advlist autolink lists link image charmap preview anchor',
-      'searchreplace visualblocks code fullscreen',
-      'insertdatetime media table paste help wordcount'
-    ],
-    toolbar: 'undo redo | formatselect | ' +
-             'bold italic backcolor | alignleft aligncenter ' +
-             'alignright alignjustify | bullist numlist outdent indent | ' +
-             'removeformat | help'
-  });
+    // Initialize Quill editor
+    const quill = new Quill('#editor', {
+        theme: 'snow',
+        placeholder: 'Start typing here...',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                ['blockquote', 'code-block'],
+                [{ 'header': 1 }, { 'header': 2 }],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'script': 'sub'}, { 'script': 'super' }],
+                [{ 'indent': '-1'}, { 'indent': '+1' }],
+                [{ 'direction': 'rtl' }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'font': [] }],
+                [{ 'align': [] }],
+                ['link', 'image', 'video'],
+                ['clean']
+            ]
+        }
+    });
+
+    // On form submit, set hidden input value to editor HTML
+    document.querySelector('form').onsubmit = function() {
+        document.querySelector('#content').value = quill.root.innerHTML;
+    };
 </script>
 {% endblock %}

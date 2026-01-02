@@ -1,0 +1,26 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Edit User</h2>
+
+    <form method="POST">
+        <label>Name</label>
+        <input class="form-control mb-2" name="name" value="{{ user.name }}" required>
+
+        <label>Email</label>
+        <input class="form-control mb-2" name="email" type="email" value="{{ user.email }}" required>
+
+        <label>New Password <small>(leave blank to keep current)</small></label>
+        <input class="form-control mb-2" name="password" type="password">
+
+        <label>Role</label>
+        <select class="form-control mb-3" name="role">
+            <option value="user" {% if user.role == "user" %}selected{% endif %}>User</option>
+            <option value="admin" {% if user.role == "admin" %}selected{% endif %}>Admin</option>
+        </select>
+
+        <button class="btn btn-primary">Update User</button>
+        <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

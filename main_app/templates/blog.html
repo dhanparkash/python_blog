@@ -10,11 +10,17 @@
 <div class="container pt-5 pb-5 ">
 <h1>Blog</h1>
 {% for post in posts %}
-    <h2><a href="/blog/{{ post['slug'] }}">{{ post['title'] }}</a></h2>
-    <p>{{ post['content'][:150] }}...</p>
+    <h2>
+        <a href="{{ url_for('main.blog_detail', slug=post['slug']) }}">
+            {{ post['title'] }}
+        </a>
+    </h2>
+
+    <p>{{ get_excerpt(post['content'], 150) }}</p>
 {% else %}
     <p>No posts yet.</p>
 {% endfor %}
+
 </div>
 </div>
 {% endblock %}

@@ -15,7 +15,7 @@
 <a href="/blog">Back to blog</a>
 </div>
 <div class="container pt-5 pb-5">
-<a href="/blog">← Back to Blog</a>
+<a href="{{ url_for('main.blog_detail', slug=post['slug']) }}">← Back to Blog</a>
 </div>
 {% endblock %}
  

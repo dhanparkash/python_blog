@@ -41,7 +41,7 @@ def blog():
     conn = get_db()
     posts = conn.execute("SELECT * FROM posts ORDER BY created_at DESC").fetchall()
     conn.close()
-    return render_template("blog.html", posts=posts)
+    return render_template("blog.html", posts=posts, get_excerpt=get_excerpt)
 
 # Blog detail page
 @main_bp.route("/blog/<slug>")
@@ -91,3 +91,13 @@ def contact():
 @main_bp.route("/about")
 def about():
     return render_template("about.html")
+
+
+import re
+
+def get_excerpt(html, length=150):
+    # Remove HTML tags
+    text = re.sub('<[^<]+?>', '', html)
+    # Normalize spaces
+    text = ' '.join(text.split())
+    return text[:length] + '...' if len(text) > length else text

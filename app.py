@@ -12,19 +12,12 @@ app = Flask(
 # ---------- SECRET KEY ----------
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
-
-UPLOAD_FOLDER = r"E:\pythonprojects\python_blog\static\images"
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# ---------- DATABASE ----------
-init_db()
-create_admin()
-
-
-# ---------- BLUEPRINTS ----------
+# Register blueprints
 app.register_blueprint(admin_bp, url_prefix="/admin")
-app.register_blueprint(main_bp)  # frontend
+app.register_blueprint(main_bp)
 
-# ---------- RUN ----------
+# Init DB
+init_db()
+
 if __name__ == "__main__":
     app.run(debug=True)

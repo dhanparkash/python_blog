@@ -1,27 +1,30 @@
-from flask import Blueprint, request, redirect, url_for, flash, render_template, current_app, session
+from flask import Blueprint, request, redirect, url_for, flash, render_template, session, abort
 from werkzeug.utils import secure_filename
-import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
+import sqlite3
 import os
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# ------------------ CONFIGURATION ------------------
 
 admin_bp = Blueprint(
     "admin",
     __name__,
     url_prefix="/admin",
-    template_folder="templates"  # relative to admin_app/
+    template_folder="templates",
+    static_folder="static",
+    static_url_path="/admin/static"
 )
+
+DB_NAME = os.path.join(os.getcwd(), "users.db")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "images")
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# DB path
-DB_NAME = os.path.join(os.getcwd(), "users.db")
-
-
-UPLOAD_FOLDER = "/static/images"
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-# ------------------ DATABASE ------------------
+# ------------------ DATABASE HELPERS ------------------
 
 def get_db():
     conn = sqlite3.connect(DB_NAME)
@@ -30,6 +33,7 @@ def get_db():
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
+    # USERS TABLE
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,18 +43,53 @@ def init_db():
             role TEXT NOT NULL
         )
     """)
+    # PAGES TABLE
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    # POSTS TABLE
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            content TEXT NOT NULL,
+            thumbnail TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     conn.close()
 
 def create_admin():
     conn = get_db()
-    admin = conn.execute("SELECT * FROM users WHERE role='admin'").fetchone()
+    # Check if this specific email exists
+    admin = conn.execute("SELECT * FROM users WHERE email=?", ("yash@gmail.com",)).fetchone()
+    
+    hashed_pw = generate_password_hash("admin123")
+    
     if not admin:
+        # Create new if doesn't exist
         conn.execute(
-            "INSERT INTO users (name,email,password,role) VALUES (?,?,?,?)",
-            ("Admin","yash@gmail.com",generate_password_hash("admin123"),"admin")
+            "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
+            ("Admin", "yash@gmail.com", hashed_pw, "admin")
         )
-        conn.commit()
+        print("Admin user created: yash@gmail.com / admin123")
+    else:
+        # Update existing admin to ensure password is correct
+        conn.execute(
+            "UPDATE users SET password=?, role='admin' WHERE email=?",
+            (hashed_pw, "yash@gmail.com")
+        )
+        print("Admin user password reset to admin123")
+        
+    conn.commit()
     conn.close()
 
 def is_admin():
@@ -61,7 +100,7 @@ def is_admin():
     conn.close()
     return user and user["role"] == "admin"
 
-# ------------------ ROUTES ------------------
+# ------------------ AUTH ROUTES ------------------
 
 @admin_bp.route("/login", methods=["GET", "POST"])
 def login():
@@ -71,15 +110,17 @@ def login():
         conn = get_db()
         user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         conn.close()
+        
         if user and check_password_hash(user["password"], password):
-            session["user_id"] = user["id"]
-            session["user_name"] = user["name"]
-            session["user_email"] = user["email"]
-            session["user_role"] = user["role"]
+            session.update({
+                "user_id": user["id"],
+                "user_name": user["name"],
+                "user_email": user["email"],
+                "user_role": user["role"]
+            })
             flash("Login successful!", "success")
             return redirect(url_for("admin.dashboard"))
-        else:
-            flash("Invalid email or password", "danger")
+        flash("Invalid email or password", "danger")
     return render_template("login.html")
 
 @admin_bp.route("/dashboard")
@@ -88,37 +129,70 @@ def dashboard():
         return redirect(url_for("admin.login"))
 
     conn = get_db()
-    total_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-    total_admins = conn.execute(
-        "SELECT COUNT(*) FROM users WHERE role='admin'"
-    ).fetchone()[0]
+    u_res = conn.execute("SELECT COUNT(*) AS total FROM users").fetchone()
+    a_res = conn.execute("SELECT COUNT(*) AS total FROM users WHERE role='admin'").fetchone()
     conn.close()
 
     return render_template(
         "dashboard.html",
-        name=session["user_name"],
-        email=session["user_email"],
-        role=session["user_role"],
-        total_users=total_users,
-        total_admins=total_admins
+        name=session.get("user_name"),
+        email=session.get("user_email"),
+        role=session.get("user_role"),
+        total_users=u_res["total"] if u_res else 0,
+        total_admins=a_res["total"] if a_res else 0
     )
-
 
 @admin_bp.route("/logout")
 def logout():
+    # 1. Clear all session data
     session.clear()
+    
+    # 2. Explicitly remove the session cookie from the response
+    response = redirect(url_for("admin.login"))
+    response.set_cookie('session', '', expires=0) 
+    
     flash("Logged out successfully", "info")
-    return redirect(url_for("admin.login"))
+    return response
+
+
+# ------------------ USER MANAGEMENT ------------------
 
 @admin_bp.route("/users")
 def users():
+    conn = get_db()
+    all_users = conn.execute("SELECT * FROM users").fetchall()
+    conn.close()
+    # Remove "admin/" because the file is sitting directly in templates/
+    return render_template("users.html", users=all_users)
+
+@admin_bp.route("/add-user", methods=["GET", "POST"])
+def add_user():
     if not is_admin():
         flash("Access denied", "danger")
         return redirect(url_for("admin.dashboard"))
-    conn = get_db()
-    users = conn.execute("SELECT * FROM users").fetchall()
-    conn.close()
-    return render_template("users.html", users=users)
+
+    if request.method == "POST":
+        name = request.form["name"]
+        email = request.form["email"]
+        password = generate_password_hash(request.form["password"])
+        role = request.form["role"]
+
+        conn = get_db()
+        try:
+            conn.execute(
+                "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
+                (name, email, password, role)
+            )
+            conn.commit()
+            flash("User added successfully", "success")
+            return redirect(url_for("admin.users"))
+        except sqlite3.IntegrityError:
+            flash("Email already exists", "danger")
+        finally:
+            conn.close()
+
+    return render_template("add_user.html")
+
 
 @admin_bp.route("/edit-user/<int:id>", methods=["GET", "POST"])
 def edit_user(id):
@@ -176,154 +250,35 @@ def delete_user(id):
     flash("User deleted successfully", "info")
     return redirect(url_for("admin.users"))
 
-@admin_bp.route("/change-password", methods=["GET", "POST"])
-def change_password():
-    if "user_id" not in session:
-        return redirect(url_for("admin.login"))
-    if request.method == "POST":
-        current = request.form["current"]
-        new = request.form["new"]
-        conn = get_db()
-        user = conn.execute("SELECT password FROM users WHERE id=?", (session["user_id"],)).fetchone()
-        if not user or not check_password_hash(user["password"], current):
-            flash("Current password incorrect", "danger")
-            return redirect(url_for("admin.change_password"))
-        hashed = generate_password_hash(new)
-        conn.execute("UPDATE users SET password=? WHERE id=?", (hashed, session["user_id"]))
-        conn.commit()
-        conn.close()
-        flash("Password updated successfully", "success")
-        return redirect(url_for("admin.dashboard"))
-    return render_template("change_password.html")
 
 
-@admin_bp.route("/add-user", methods=["GET", "POST"])
-def add_user():
-    if not is_admin():
-        flash("Access denied", "danger")
-        return redirect(url_for("admin.dashboard"))
-
-    if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-        password = generate_password_hash(request.form["password"])
-        role = request.form["role"]
-
-        conn = get_db()
-        try:
-            conn.execute(
-                "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
-                (name, email, password, role)
-            )
-            conn.commit()
-            flash("User added successfully", "success")
-            return redirect(url_for("admin.users"))
-        except sqlite3.IntegrityError:
-            flash("Email already exists", "danger")
-        finally:
-            conn.close()
-
-    return render_template("add_user.html")
-
-
-# ---------- PAGES ----------
-
-@admin_bp.route("/pages")
-def pages():
-    conn = get_db()
-    pages = conn.execute("SELECT * FROM pages ORDER BY id DESC").fetchall()
-    conn.close()
-    return render_template("pages.html", pages=pages)
-
-
-@admin_bp.route("/add-page", methods=["GET", "POST"])
-def add_page():
-    if request.method == "POST":
-        title = request.form["title"]
-        slug = request.form["slug"]
-        content = request.form["content"]
-
-        conn = get_db()
-        conn.execute(
-            "INSERT INTO pages (title, slug, content) VALUES (?,?,?)",
-            (title, slug, content)
-        )
-        conn.commit()
-        conn.close()
-        flash("Page added successfully", "success")
-        return redirect(url_for("admin.pages"))
-
-    return render_template("add_page.html")
-
-
-@admin_bp.route("/edit-page/<int:id>", methods=["GET", "POST"])
-def edit_page(id):
-    conn = get_db()
-    page = conn.execute("SELECT * FROM pages WHERE id=?", (id,)).fetchone()
-
-    if request.method == "POST":
-        title = request.form["title"]
-        slug = request.form["slug"]
-        content = request.form["content"]
-
-        conn.execute(
-            "UPDATE pages SET title=?, slug=?, content=? WHERE id=?",
-            (title, slug, content, id)
-        )
-        conn.commit()
-        conn.close()
-        flash("Page updated", "success")
-        return redirect(url_for("admin.pages"))
-
-    conn.close()
-    return render_template("edit_page.html", page=page)
-
-
-@admin_bp.route("/delete-page/<int:id>")
-def delete_page(id):
-    conn = get_db()
-    conn.execute("DELETE FROM pages WHERE id=?", (id,))
-    conn.commit()
-    conn.close()
-    flash("Page deleted", "info")
-    return redirect(url_for("admin.pages"))
-
-
-
-
-# ---------- BLOG POSTS ----------
+# ------------------ BLOG POSTS ------------------
 
 @admin_bp.route("/posts")
 def admin_posts():
     conn = get_db()
-    posts = conn.execute("SELECT * FROM posts ORDER BY id DESC").fetchall()
+    posts = conn.execute("SELECT * FROM posts ORDER BY created_at DESC").fetchall()
     conn.close()
     return render_template("posts.html", posts=posts)
-
-@admin_bp.route('/static/images', methods=['POST'])
-def upload_file():
-    file = request.files['file']
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    file.save(os.path.join(upload_folder, file.filename))
-    return "File uploaded!"
 
 @admin_bp.route("/add-post", methods=["GET", "POST"])
 def add_post():
     if request.method == "POST":
-        title = request.form['title']
-        slug = request.form['slug']
-        content = request.form['content']
+        title, slug, content = request.form["title"], request.form["slug"], request.form["content"]
+        thumbnail = None
+        file = request.files.get("thumbnail")
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            thumbnail = filename
 
-        thumbnail_file = request.files.get('thumbnail')
-        thumbnail_filename = None
-        if thumbnail_file and allowed_file(thumbnail_file.filename):
-            filename = secure_filename(thumbnail_file.filename)
-            thumbnail_file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
-            thumbnail_filename = filename
-
-        flash("Post added successfully!", "success")
-        return redirect(url_for('admin.add_post'))
-
+        conn = get_db()
+        conn.execute("INSERT INTO posts (title, slug, content, thumbnail) VALUES (?, ?, ?, ?)",
+                    (title, slug, content, thumbnail))
+        conn.commit()
+        conn.close()
+        flash("Post added", "success")
+        return redirect(url_for("admin.admin_posts"))
     return render_template("add_post.html")
 
 @admin_bp.route("/edit-post/<int:id>", methods=["GET", "POST"])
@@ -331,23 +286,38 @@ def edit_post(id):
     conn = get_db()
     post = conn.execute("SELECT * FROM posts WHERE id=?", (id,)).fetchone()
 
-    if request.method == "POST":
-        title = request.form["title"]
-        slug = request.form["slug"]
-        content = request.form["content"]
+    if not post:
+        conn.close()
+        flash("Post not found", "danger")
+        return redirect(url_for("admin.admin_posts"))
 
-        conn.execute(
-            "UPDATE posts SET title=?, slug=?, content=? WHERE id=?",
-            (title, slug, content, id)
-        )
+    if request.method == "POST":
+        title = request.form.get("title")
+        slug = request.form.get("slug")
+        content = request.form.get("content")
+
+        # Safely access existing thumbnail
+        thumbnail = post["thumbnail"] if "thumbnail" in post.keys() else None
+        
+        file = request.files.get("thumbnail")
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            thumbnail = filename
+
+        conn.execute("""
+            UPDATE posts
+            SET title=?, slug=?, content=?, thumbnail=?
+            WHERE id=?
+        """, (title, slug, content, thumbnail, id))
+
         conn.commit()
         conn.close()
-        flash("Post updated", "success")
+        flash("Post updated successfully", "success")
         return redirect(url_for("admin.admin_posts"))
 
     conn.close()
     return render_template("edit_post.html", post=post)
-
 
 @admin_bp.route("/delete-post/<int:id>")
 def delete_post(id):
@@ -355,173 +325,83 @@ def delete_post(id):
     conn.execute("DELETE FROM posts WHERE id=?", (id,))
     conn.commit()
     conn.close()
-    flash("Post deleted", "info")
+    flash("Post deleted", "success")
     return redirect(url_for("admin.admin_posts"))
 
+# ------------------ PAGES MANAGEMENT ------------------
 
-# BLOG LIST
-@admin_bp.route("/blog")
-def blog():
-    conn = get_db()
-    posts = conn.execute("SELECT * FROM posts ORDER BY created_at DESC").fetchall()
-    conn.close()
-    return render_template("blog.html", posts=posts)
-
-
-# BLOG DETAIL
-@admin_bp.route("/blog/<slug>")
-def blog_detail(slug):
-    conn = get_db()
-    post = conn.execute("SELECT * FROM posts WHERE slug=?", (slug,)).fetchone()
-    conn.close()
-
-    if not post:
-        abort(404)
-
-    return render_template("blog_detail.html", post=post)
-
-
-# ---------- PAGES ----------
-
-# List all pages
 @admin_bp.route("/pages")
-def pages_view():
-    if not is_admin():
-        flash("Access denied", "danger")
-        return redirect(url_for("admin.dashboard"))
-
+def pages_view():  
+    """Endpoint: admin.pages_view"""
     conn = get_db()
     pages = conn.execute("SELECT * FROM pages ORDER BY id DESC").fetchall()
     conn.close()
     return render_template("pages.html", pages=pages)
 
-
-# Add new page
 @admin_bp.route("/add-page", methods=["GET", "POST"])
 def add_page_view():
-    if not is_admin():
-        flash("Access denied", "danger")
-        return redirect(url_for("admin.dashboard"))
-
     if request.method == "POST":
         title = request.form["title"].strip()
         slug = request.form["slug"].strip()
         content = request.form["content"].strip()
-
-        if not title or not slug or not content:
-            flash("All fields are required", "danger")
-            return render_template("add_page.html")
+        
+        # --- Handle Thumbnail ---
+        thumbnail = None
+        file = request.files.get("thumbnail")
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            thumbnail = filename
 
         conn = get_db()
         try:
-            conn.execute(
-                "INSERT INTO pages (title, slug, content) VALUES (?, ?, ?)",
-                (title, slug, content)
-            )
+            conn.execute("INSERT INTO pages (title, slug, content, thumbnail) VALUES (?, ?, ?, ?)", 
+                         (title, slug, content, thumbnail))
             conn.commit()
-            flash("Page added successfully!", "success")
+            flash("Page added with thumbnail", "success")
             return redirect(url_for("admin.pages_view"))
         except sqlite3.IntegrityError:
-            flash("Slug already exists. Use a unique slug.", "danger")
+            flash("Slug exists", "danger")
         finally:
             conn.close()
-
     return render_template("add_page.html")
 
-
-# Edit page
 @admin_bp.route("/edit-page/<int:id>", methods=["GET", "POST"])
 def edit_page_view(id):
-    if not is_admin():
-        flash("Access denied", "danger")
-        return redirect(url_for("admin.dashboard"))
-
     conn = get_db()
     page = conn.execute("SELECT * FROM pages WHERE id=?", (id,)).fetchone()
-
-    if not page:
-        conn.close()
-        flash("Page not found", "danger")
-        return redirect(url_for("admin.pages_view"))
 
     if request.method == "POST":
         title = request.form["title"].strip()
         slug = request.form["slug"].strip()
         content = request.form["content"].strip()
+        
+        # Keep old thumbnail by default
+        thumbnail = page["thumbnail"]
 
-        if not title or not slug or not content:
-            flash("All fields are required", "danger")
-            return render_template("edit_page.html", page=page)
+        # Check for new upload
+        file = request.files.get("thumbnail")
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            thumbnail = filename
 
-        try:
-            conn.execute(
-                "UPDATE pages SET title=?, slug=?, content=? WHERE id=?",
-                (title, slug, content, id)
-            )
-            conn.commit()
-            flash("Page updated successfully!", "success")
-            return redirect(url_for("admin.pages_view"))
-        except sqlite3.IntegrityError:
-            flash("Slug already exists. Use a unique slug.", "danger")
-            return render_template("edit_page.html", page=page)
-        finally:
-            conn.close()
-
+        conn.execute("UPDATE pages SET title=?, slug=?, content=?, thumbnail=? WHERE id=?", 
+                     (title, slug, content, thumbnail, id))
+        conn.commit()
+        conn.close()
+        flash("Page updated", "success")
+        return redirect(url_for("admin.pages_view"))
+    
     conn.close()
     return render_template("edit_page.html", page=page)
 
-
-# Delete page
 @admin_bp.route("/delete-page/<int:id>")
 def delete_page_view(id):
-    if not is_admin():
-        flash("Access denied", "danger")
-        return redirect(url_for("admin.dashboard"))
-
+    """Endpoint: admin.delete_page_view"""
     conn = get_db()
     conn.execute("DELETE FROM pages WHERE id=?", (id,))
     conn.commit()
     conn.close()
-
-    flash("Page deleted successfully!", "info")
-    return redirect(url_for("admin.pages_view"))
-
-
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-
-    # USERS
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL
-        )
-    """)
-
-    # PAGES
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS pages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            slug TEXT NOT NULL UNIQUE,
-            content TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    # BLOG POSTS
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            slug TEXT NOT NULL UNIQUE,
-            content TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    conn.commit()
-    conn.close()
+    flash("Page deleted", "info")
+    return redirect(url_for("admin.pages_view")) # FIXED: was admin.pages

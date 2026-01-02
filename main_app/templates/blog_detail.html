@@ -2,7 +2,7 @@
 {% block content %}
 <div class="container pt-5 pb-5">
 {% if post.thumbnail %}
-    <img src="{{ url_for('static', filename='uploads/' ~ post.thumbnail) }}" alt="{{ post.title }}" style="max-width:300px;">
+    <img src="{{ url_for('admin.static', filename='images/' + post['thumbnail']) }}" alt="{{ post.title }}" style="max-width:100%;">
 {% endif %}  
 <h1>{{ post.title }}</h1>
 
@@ -11,8 +11,6 @@
     {{ post.content|safe }}
 </div>
 
-
-<a href="/blog">Back to blog</a>
 </div>
 <div class="container pt-5 pb-5">
 <a href="{{ url_for('main.blog_detail', slug=post['slug']) }}">← Back to Blog</a>

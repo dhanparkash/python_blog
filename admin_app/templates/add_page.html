@@ -1,28 +1,85 @@
 {% extends "admin_base.html" %}
-
 {% block content %}
-<h2>Add New Page</h2>
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h2 class="mb-0">Add New Page</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data" id="postForm">
+            <div class="mb-3">
+                <label class="form-label">Title:</label>
+                <input type="text" name="title" class="form-control" placeholder="Enter Page title" required>
+            </div>
 
-<form method="POST">
-    <label>Title:</label><br>
-    <input type="text" name="title" required><br><br>
+            <div class="mb-3">
+                <label class="form-label">Slug (unique URL):</label>
+                <input type="text" name="slug" class="form-control" placeholder="e.g., my-first-Page" required>
+            </div>
 
-    <label>Slug:</label><br>
-    <input type="text" name="slug" required><br><br>
+            <div class="mb-3">
+                <label class="form-label">Page Thumbnail Image:</label>
+                <div class="mb-2">
+                    <img id="preview" style="max-width:200px; display:none; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                </div>
+                      <input type="file" name="thumbnail" class="form-control" accept="image/*">
+            </div>
 
-    <label>Content:</label><br>
-    <textarea name="content" rows="6" required></textarea><br><br>
+                     <div class="mb-3">
+                <label class="form-label">Content:</label>
+                <input type="hidden" name="content" id="content_hidden">
+                <div id="editor-container" style="height: 300px; background: white;"></div>
+            </div>
 
-    <button type="submit">Add Page</button>
-</form>
 
-<!-- Flash messages -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }}">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
+            <hr>
+            <button type="submit" class="btn btn-primary">Publish Page</button>
+            <a href="{{ url_for('admin.admin_posts') }}" class="btn btn-light">Cancel</a>
+        </form>
+    </div>
+</div>
 
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+<script>
+    // 1. Image Preview Logic
+    document.getElementById('preview').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = document.getElementById('preview');
+            img.src = e.target.result;
+            img.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // 2. Quill Editor Logic
+    var quill = new Quill('#editor-container', {
+        theme: 'snow',
+        placeholder: 'Write something amazing...',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                ['link', 'blockquote', 'code-block', 'image'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+            ]
+        }
+    });
+
+    // 3. Sync Quill content to Hidden Input on Submit
+    var form = document.getElementById('postForm');
+    form.onsubmit = function() {
+        var contentInput = document.getElementById('content_hidden');
+        contentInput.value = quill.root.innerHTML;
+        
+        // Basic check to ensure content isn't just empty tags
+        if(quill.getText().trim().length === 0) {
+            alert("Please enter some content for the post.");
+            return false;
+        }
+    };
+</script>
 {% endblock %}
